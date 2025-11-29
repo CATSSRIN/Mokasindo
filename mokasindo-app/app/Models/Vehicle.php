@@ -30,6 +30,9 @@ class Vehicle extends Model
         'district_id',
         'sub_district_id',
         'postal_code',
+        'latitude',
+        'longitude',
+        'full_address',
         'status',
         'rejection_reason',
         'approved_at',
@@ -44,6 +47,8 @@ class Vehicle extends Model
         'engine_capacity' => 'integer',
         'approved_at' => 'datetime',
         'views_count' => 'integer',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     // Relationships
@@ -132,5 +137,30 @@ class Vehicle extends Model
     public function isSold()
     {
         return $this->status === 'sold';
+    }
+
+    /**
+     * Scope for searching vehicles within a radius using Haversine formula
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param float $lat Latitude of center point
+     * @param float $lng Longitude of center point
+     * @param float $radius Radius in kilometers (default: 50)
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeNearby($query, $lat, $lng, $radius = 50)
+    {
+        return $query->selectRaw("
+            vehicles.*,
+            (6371 * acos(cos(radians(?)) 
+            * cos(radians(latitude)) 
+            * cos(radians(longitude) - radians(?)) 
+            + sin(radians(?)) 
+            * sin(radians(latitude)))) AS distance_km
+        ", [$lat, $lng, $lat])
+        ->whereNotNull('latitude')
+        ->whereNotNull('longitude')
+        ->having('distance_km', '<=', $radius)
+        ->orderBy('distance_km');
     }
 }
