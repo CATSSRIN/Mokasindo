@@ -2,41 +2,45 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\WishlistController;
 use App\Models\Page;
 
 Route::get('/', function () {
     return view('landing');
 });
 
-// Group Route Company
-Route::controller(CompanyController::class)->group(function () {
-    Route::get('/about', 'about')->name('company.about');
-    Route::get('/faq', 'faq')->name('company.faq');
-    Route::get('/contact', 'contact')->name('company.contact');
-    Route::post('/contact', 'storeContact')->name('company.contact.store');
+Route::prefix('etalase')->group(function () {
+    Route::get('/filters', [VehicleController::class, 'filters']);
+    Route::get('/vehicles', [VehicleController::class, 'index']);
+    Route::get('/vehicles/{id}', [VehicleController::class, 'show']);
+});
 
-    Route::get('/careers', 'career')->name('company.career');
-    Route::get('/careers/{id}', 'careerDetail')->name('company.career.show');
-    Route::post('/careers/{id}/apply', 'storeCareerApplication')->name('company.career.store');
+Route::middleware('auth')->group(function () {
+    Route::get('/wishlists', [WishlistController::class, 'index']);
+    Route::post('/wishlists', [WishlistController::class, 'store']);
+    Route::delete('/wishlists/{id}', [WishlistController::class, 'destroy']);
+});
 
-    Route::get('/terms', function () {
-        $page = Page::findBySlug('terms');
-        return view('pages.company.generic', compact('page'));
-    })->name('company.terms');
+// ====================================================
+// 4. HELPER TESTING (Force Login)
+// ====================================================
+// Jalankan URL ini sekali di browser agar kamu login otomatis sebagai ID 1 (http://mokasindo.test/force-login)
 
-    Route::get('/privacy', function () {
-        $page = Page::findBySlug('privacy-policy');
-        return view('pages.company.generic', compact('page'));
-    })->name('company.privacy');
+Route::get('/force-login', function () {
+    $user = \App\Models\User::find(1);
+    
+    if (!$user) {
+        // Buat user dummy jika belum ada
+        $user = \App\Models\User::create([
+            'id' => 1,
+            'name' => 'Tester User',
+            'email' => 'tester@example.com',
+            'password' => bcrypt('password'),
+        ]);
+    }
 
-    Route::get('/how-it-works', function () {
-        $page = Page::findBySlug('how-it-works');
-        return view('pages.company.generic', compact('page'));
-    })->name('company.how_it_works');
-
-    Route::get('/cookie-policy', function () {
-        $page = Page::findBySlug('cookie-policy');
-        return view('pages.company.generic', compact('page'));
-    })->name('company.cookie_policy');
-
+    Auth::login($user);
+    
+    return "<h1>Berhasil Login!</h1> <p>Login sebagai: <b>" . $user->name . "</b></p><p>Silakan akses <a href='/wishlists'>/wishlists</a> atau <a href='/etalase/vehicles'>/etalase/vehicles</a></p>";
 });
